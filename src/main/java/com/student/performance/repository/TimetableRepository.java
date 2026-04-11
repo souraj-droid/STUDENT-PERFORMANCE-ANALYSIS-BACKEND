@@ -1,0 +1,17 @@
+package com.student.performance.repository;
+
+import com.student.performance.model.Timetable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface TimetableRepository extends JpaRepository<Timetable, Long> {
+    
+    List<Timetable> findByDay(String day);
+    
+    List<Timetable> findByDayOrderByHour(String day);
+    
+    List<Timetable> findByDayAndHour(String day, int hour);
+}
