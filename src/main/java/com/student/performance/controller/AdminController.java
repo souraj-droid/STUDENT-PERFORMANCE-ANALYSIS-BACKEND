@@ -1,5 +1,7 @@
 package com.student.performance.controller;
 
+import com.student.performance.dto.ApiResponse;
+import com.student.performance.exception.ResourceNotFoundException;
 import com.student.performance.model.Course;
 import com.student.performance.model.Student;
 import com.student.performance.model.Performance;
@@ -8,7 +10,6 @@ import com.student.performance.model.User;
 import com.student.performance.model.Report;
 import com.student.performance.model.ReportSubject;
 import com.student.performance.dto.ReportDTO;
-import com.student.performance.dto.ReportSubjectDTO;
 import com.student.performance.repository.CourseRepository;
 import com.student.performance.repository.TimetableRepository;
 import com.student.performance.repository.UserRepository;
@@ -16,7 +17,9 @@ import com.student.performance.service.AnalyticsService;
 import com.student.performance.service.StudentService;
 import com.student.performance.service.PerformanceService;
 import com.student.performance.service.ReportService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -42,27 +45,31 @@ public class AdminController {
     private final PasswordEncoder passwordEncoder;
     
     @GetMapping("/students")
-    public ResponseEntity<List<Student>> getAllStudents() {
-        return ResponseEntity.ok(studentService.getAllStudents());
+    public ResponseEntity<ApiResponse<List<Student>>> getAllStudents() {
+        List<Student> students = studentService.getAllStudents();
+        return ResponseEntity.ok(ApiResponse.success(students, "Students retrieved successfully"));
     }
     
     @GetMapping("/students/{id}")
-    public ResponseEntity<Student> getStudent(@PathVariable Long id) {
-        Optional<Student> student = studentService.getStudentById(id);
-        return student.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<ApiResponse<Student>> getStudent(@PathVariable Long id) {
+        Student student = studentService.getStudentById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
+        return ResponseEntity.ok(ApiResponse.success(student, "Student retrieved successfully"));
     }
     
     @PostMapping("/students")
-    public ResponseEntity<Student> createStudent(@RequestBody Student student) {
+    public ResponseEntity<ApiResponse<Student>> createStudent(@Valid @RequestBody Student student) {
         if (studentService.existsByEmail(student.getEmail())) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error("Email already exists"));
         }
         if (studentService.existsByStudentId(student.getStudentId())) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error("Student ID already exists"));
         }
         if (userRepository.existsByUsername(student.getStudentId())) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error("Username already exists"));
         }
         
         Student savedStudent = studentService.saveStudent(student);
@@ -77,16 +84,14 @@ public class AdminController {
         user.setStudentId(savedStudent.getId());
         userRepository.save(user);
         
-        return ResponseEntity.ok(savedStudent);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(savedStudent, "Student created successfully"));
     }
     
     @PutMapping("/students/{id}")
-    public ResponseEntity<Student> updateStudent(@PathVariable Long id, @RequestBody Student student) {
-        if (!studentService.getStudentById(id).isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-        
-        Student existingStudent = studentService.getStudentById(id).get();
+    public ResponseEntity<ApiResponse<Student>> updateStudent(@PathVariable Long id, @Valid @RequestBody Student student) {
+        Student existingStudent = studentService.getStudentById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
         
         // Check if studentId or email is being changed
         boolean studentIdChanged = !existingStudent.getStudentId().equals(student.getStudentId());
@@ -106,81 +111,94 @@ public class AdminController {
             userRepository.save(user);
         });
         
-        return ResponseEntity.ok(savedStudent);
+        return ResponseEntity.ok(ApiResponse.success(savedStudent, "Student updated successfully"));
     }
     
     @DeleteMapping("/students/{id}")
-    public ResponseEntity<Void> deleteStudent(@PathVariable Long id) {
-        if (!studentService.getStudentById(id).isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-        Student student = studentService.getStudentById(id).get();
+    public ResponseEntity<ApiResponse<Void>> deleteStudent(@PathVariable Long id) {
+        Student student = studentService.getStudentById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
         
         // Delete associated user account
         userRepository.findByStudentId(id).ifPresent(userRepository::delete);
         
         studentService.deleteStudent(id);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.success(null, "Student deleted successfully"));
     }
     
     @GetMapping("/performances")
-    public ResponseEntity<List<Performance>> getAllPerformances() {
-        return ResponseEntity.ok(performanceService.getAllPerformances());
+    public ResponseEntity<ApiResponse<List<Performance>>> getAllPerformances() {
+        List<Performance> performances = performanceService.getAllPerformances();
+        return ResponseEntity.ok(ApiResponse.success(performances, "Performances retrieved successfully"));
     }
     
     @PostMapping("/performances")
-    public ResponseEntity<Performance> createPerformance(@RequestBody Performance performance) {
+    public ResponseEntity<ApiResponse<Performance>> createPerformance(@Valid @RequestBody Performance performance) {
         if (!performanceService.validateStudentAndCourse(
                 performance.getStudent().getId(), 
                 performance.getCourse().getId())) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Invalid student or course ID"));
         }
-        return ResponseEntity.ok(performanceService.savePerformance(performance));
+        Performance savedPerformance = performanceService.savePerformance(performance);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(savedPerformance, "Performance created successfully"));
     }
     
     @GetMapping("/analytics/overview")
-    public ResponseEntity<Map<String, Object>> getOverallStatistics() {
-        return ResponseEntity.ok(analyticsService.getOverallStatistics());
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getOverallStatistics() {
+        Map<String, Object> stats = analyticsService.getOverallStatistics();
+        return ResponseEntity.ok(ApiResponse.success(stats, "Analytics overview retrieved successfully"));
     }
     
     @GetMapping("/analytics/department/{department}")
-    public ResponseEntity<Map<String, Object>> getDepartmentPerformance(@PathVariable String department) {
-        return ResponseEntity.ok(analyticsService.getDepartmentPerformance(department));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDepartmentPerformance(@PathVariable String department) {
+        Map<String, Object> stats = analyticsService.getDepartmentPerformance(department);
+        return ResponseEntity.ok(ApiResponse.success(stats, "Department performance retrieved successfully"));
     }
     
     @GetMapping("/analytics/at-risk")
-    public ResponseEntity<List<Map<String, Object>>> getAtRiskStudents() {
-        return ResponseEntity.ok(analyticsService.getAtRiskStudents());
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAtRiskStudents() {
+        List<Map<String, Object>> atRiskStudents = analyticsService.getAtRiskStudents();
+        return ResponseEntity.ok(ApiResponse.success(atRiskStudents, "At-risk students retrieved successfully"));
     }
     
     @GetMapping("/students/search")
-    public ResponseEntity<List<Student>> searchStudents(@RequestParam String name) {
+    public ResponseEntity<ApiResponse<List<Student>>> searchStudents(@RequestParam @jakarta.validation.constraints.NotBlank String name) {
         List<Student> students = studentService.searchStudentsByName(name);
-        return ResponseEntity.ok(students);
+        return ResponseEntity.ok(ApiResponse.success(students, "Students search completed"));
     }
     
     @GetMapping("/students/department/{department}")
-    public ResponseEntity<List<Student>> getStudentsByDepartment(@PathVariable String department) {
-        return ResponseEntity.ok(studentService.getStudentsByDepartment(department));
+    public ResponseEntity<ApiResponse<List<Student>>> getStudentsByDepartment(@PathVariable String department) {
+        List<Student> students = studentService.getStudentsByDepartment(department);
+        return ResponseEntity.ok(ApiResponse.success(students, "Students by department retrieved"));
     }
     
     @GetMapping("/students/year/{year}")
-    public ResponseEntity<List<Student>> getStudentsByAdmissionYear(@PathVariable int year) {
-        return ResponseEntity.ok(studentService.getStudentsByAdmissionYear(year));
+    public ResponseEntity<ApiResponse<List<Student>>> getStudentsByAdmissionYear(@PathVariable int year) {
+        List<Student> students = studentService.getStudentsByAdmissionYear(year);
+        return ResponseEntity.ok(ApiResponse.success(students, "Students by admission year retrieved"));
     }
     
     @GetMapping("/courses")
-    public ResponseEntity<List<Course>> getAllCourses() {
-        return ResponseEntity.ok(courseRepository.findAll());
+    public ResponseEntity<ApiResponse<List<Course>>> getAllCourses() {
+        List<Course> courses = courseRepository.findAll();
+        return ResponseEntity.ok(ApiResponse.success(courses, "Courses retrieved successfully"));
     }
     
     @GetMapping("/timetable")
-    public ResponseEntity<List<Timetable>> getTimetable() {
-        return ResponseEntity.ok(timetableRepository.findAll());
+    public ResponseEntity<ApiResponse<List<Timetable>>> getTimetable() {
+        List<Timetable> timetables = timetableRepository.findAll();
+        return ResponseEntity.ok(ApiResponse.success(timetables, "Timetable retrieved successfully"));
     }
 
     @PostMapping("/reports")
-    public ResponseEntity<Report> createReport(@RequestBody ReportDTO reportDTO) {
+    public ResponseEntity<ApiResponse<Report>> createReport(@Valid @RequestBody ReportDTO reportDTO) {
+        // Validate student exists
+        Student student = studentService.getStudentById(reportDTO.getStudentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", reportDTO.getStudentId()));
+        
         // Map DTO to Report entity
         Report report = new Report();
         report.setName(reportDTO.getName());
@@ -190,12 +208,7 @@ public class AdminController {
         report.setOverallPercentage(reportDTO.getOverallPercentage());
         report.setGrade(reportDTO.getGrade());
         report.setCreatedAt(LocalDate.now());
-
-        // Set student
-        if (reportDTO.getStudentId() != null) {
-            Student student = studentService.getStudentById(reportDTO.getStudentId()).orElse(null);
-            report.setStudent(student);
-        }
+        report.setStudent(student);
 
         // Map subjects
         if (reportDTO.getSubjects() != null && !reportDTO.getSubjects().isEmpty()) {
@@ -216,11 +229,18 @@ public class AdminController {
             report.setSubjects(subjects);
         }
 
-        return ResponseEntity.ok(reportService.createReport(report));
+        Report savedReport = reportService.createReport(report);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(savedReport, "Report created successfully"));
     }
 
     @GetMapping("/reports/{studentId}")
-    public ResponseEntity<List<Report>> getStudentReports(@PathVariable Long studentId) {
-        return ResponseEntity.ok(reportService.getReportsByStudentId(studentId));
+    public ResponseEntity<ApiResponse<List<Report>>> getStudentReports(@PathVariable Long studentId) {
+        // Validate student exists
+        studentService.getStudentById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
+        
+        List<Report> reports = reportService.getReportsByStudentId(studentId);
+        return ResponseEntity.ok(ApiResponse.success(reports, "Student reports retrieved successfully"));
     }
 }

@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: student-performance-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: student_performance
+      MYSQL_USER: student_user
+      MYSQL_PASSWORD: student_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - student-network
+
+  backend:
+    build: .
+    container_name: student-performance-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/student_performance
+      SPRING_DATASOURCE_USERNAME: student_user
+      SPRING_DATASOURCE_PASSWORD: student_password
+      JWT_SECRET: mySecretKeyForStudentPerformanceAnalyticsThatIsLongEnoughForHS256
+      JWT_EXPIRATION: 86400000
+    depends_on:
+      - mysql
+    networks:
+      - student-network
+
+volumes:
+  mysql-data:
+
+networks:
+  student-network:
+    driver: bridge

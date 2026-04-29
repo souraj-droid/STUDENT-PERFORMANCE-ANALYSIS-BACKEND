@@ -1,5 +1,7 @@
 package com.student.performance.controller;
 
+import com.student.performance.dto.ApiResponse;
+import com.student.performance.exception.ResourceNotFoundException;
 import com.student.performance.model.Performance;
 import com.student.performance.model.Student;
 import com.student.performance.model.Report;
@@ -8,13 +10,14 @@ import com.student.performance.service.StudentService;
 import com.student.performance.service.PerformanceService;
 import com.student.performance.service.ReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/student")
 @RequiredArgsConstructor
@@ -26,86 +29,79 @@ public class StudentController {
     private final ReportService reportService;
     
     @GetMapping("/profile/{studentId}")
-    public ResponseEntity<Student> getStudentProfile(@PathVariable String studentId) {
-        Optional<Student> student = studentService.getStudentByStudentId(studentId);
-        return student.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<ApiResponse<Student>> getStudentProfile(@PathVariable String studentId) {
+        Student student = studentService.getStudentByStudentId(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "studentId", studentId));
+        return ResponseEntity.ok(ApiResponse.success(student, "Student profile retrieved successfully"));
     }
     
     @GetMapping("/performances/{studentId}")
-    public ResponseEntity<List<Performance>> getStudentPerformances(@PathVariable String studentId) {
-        Optional<Student> student = studentService.getStudentByStudentId(studentId);
-        if (!student.isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(performanceService.getPerformancesByStudent(student.get().getId()));
+    public ResponseEntity<ApiResponse<List<Performance>>> getStudentPerformances(@PathVariable String studentId) {
+        Student student = studentService.getStudentByStudentId(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "studentId", studentId));
+        List<Performance> performances = performanceService.getPerformancesByStudent(student.getId());
+        return ResponseEntity.ok(ApiResponse.success(performances, "Student performances retrieved successfully"));
     }
     
     @GetMapping("/performances/{studentId}/semester/{semester}")
-    public ResponseEntity<List<Performance>> getStudentPerformancesBySemester(
+    public ResponseEntity<ApiResponse<List<Performance>>> getStudentPerformancesBySemester(
             @PathVariable String studentId, @PathVariable String semester) {
-        Optional<Student> student = studentService.getStudentByStudentId(studentId);
-        if (!student.isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(performanceService.getPerformancesByStudentAndSemester(
-                student.get().getId(), semester));
+        Student student = studentService.getStudentByStudentId(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "studentId", studentId));
+        List<Performance> performances = performanceService.getPerformancesByStudentAndSemester(
+                student.getId(), semester);
+        return ResponseEntity.ok(ApiResponse.success(performances, "Semester performances retrieved successfully"));
     }
     
     @GetMapping("/performances/{studentId}/year/{year}")
-    public ResponseEntity<List<Performance>> getStudentPerformancesByYear(
+    public ResponseEntity<ApiResponse<List<Performance>>> getStudentPerformancesByYear(
             @PathVariable String studentId, @PathVariable int year) {
-        Optional<Student> student = studentService.getStudentByStudentId(studentId);
-        if (!student.isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(performanceService.getPerformancesByStudentAndYear(
-                student.get().getId(), year));
+        Student student = studentService.getStudentByStudentId(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "studentId", studentId));
+        List<Performance> performances = performanceService.getPerformancesByStudentAndYear(
+                student.getId(), year);
+        return ResponseEntity.ok(ApiResponse.success(performances, "Year performances retrieved successfully"));
     }
     
     @GetMapping("/analytics/summary/{studentId}")
-    public ResponseEntity<Map<String, Object>> getStudentPerformanceSummary(@PathVariable String studentId) {
-        Optional<Student> student = studentService.getStudentByStudentId(studentId);
-        if (!student.isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(analyticsService.getStudentPerformanceSummary(student.get().getId()));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getStudentPerformanceSummary(@PathVariable String studentId) {
+        Student student = studentService.getStudentByStudentId(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "studentId", studentId));
+        Map<String, Object> summary = analyticsService.getStudentPerformanceSummary(student.getId());
+        return ResponseEntity.ok(ApiResponse.success(summary, "Performance summary retrieved successfully"));
     }
     
     @GetMapping("/analytics/recommendations/{studentId}")
-    public ResponseEntity<List<String>> getStudentRecommendations(@PathVariable String studentId) {
-        Optional<Student> student = studentService.getStudentByStudentId(studentId);
-        if (!student.isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(analyticsService.getRecommendationsForStudent(student.get().getId()));
+    public ResponseEntity<ApiResponse<List<String>>> getStudentRecommendations(@PathVariable String studentId) {
+        Student student = studentService.getStudentByStudentId(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "studentId", studentId));
+        List<String> recommendations = analyticsService.getRecommendationsForStudent(student.getId());
+        return ResponseEntity.ok(ApiResponse.success(recommendations, "Recommendations retrieved successfully"));
     }
     
     @GetMapping("/gpa/{studentId}")
-    public ResponseEntity<Map<String, Object>> calculateGPA(@PathVariable String studentId) {
-        Optional<Student> student = studentService.getStudentByStudentId(studentId);
-        if (!student.isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<ApiResponse<Map<String, Object>>> calculateGPA(@PathVariable String studentId) {
+        Student student = studentService.getStudentByStudentId(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "studentId", studentId));
 
-        List<Performance> performances = performanceService.getPerformancesByStudent(student.get().getId());
+        List<Performance> performances = performanceService.getPerformancesByStudent(student.getId());
         Map<String, Object> gpaInfo = Map.of(
             "studentId", studentId,
-            "studentName", student.get().getFullName(),
+            "studentName", student.getFullName(),
             "totalCourses", performances.size(),
-            "averageGrade", performanceService.getAveragePerformanceForStudent(student.get().getId()),
-            "failedCourses", performanceService.getFailedCoursesCountForStudent(student.get().getId()),
+            "averageGrade", performanceService.getAveragePerformanceForStudent(student.getId()),
+            "failedCourses", performanceService.getFailedCoursesCountForStudent(student.getId()),
             "academicStanding", getAcademicStanding(performances)
         );
 
-        return ResponseEntity.ok(gpaInfo);
+        return ResponseEntity.ok(ApiResponse.success(gpaInfo, "GPA calculated successfully"));
     }
 
     @GetMapping("/reports")
-    public ResponseEntity<Report> getMyReport(@RequestParam String studentId) {
-        return reportService.getReportByStudentId(studentId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<ApiResponse<Report>> getMyReport(@RequestParam String studentId) {
+        Report report = reportService.getReportByStudentId(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Report", "studentId", studentId));
+        return ResponseEntity.ok(ApiResponse.success(report, "Report retrieved successfully"));
     }
     
     private String getAcademicStanding(List<Performance> performances) {

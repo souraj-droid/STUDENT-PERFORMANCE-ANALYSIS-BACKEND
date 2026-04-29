@@ -2,6 +2,7 @@ package com.student.performance.service;
 
 import com.student.performance.model.Report;
 import com.student.performance.repository.ReportRepository;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +15,7 @@ public class ReportService {
 
     private final ReportRepository reportRepository;
 
-    public Report createReport(Report report) {
+    public Report createReport(@NonNull Report report) {
         return reportRepository.save(report);
     }
 

@@ -1,34 +1,27 @@
 package com.student.performance.controller;
 
+import com.student.performance.dto.ApiResponse;
+import com.student.performance.dto.LoginRequest;
+import com.student.performance.dto.LoginResponse;
+import com.student.performance.service.AuthenticationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
-    
-    @GetMapping("/profile")
-    public ResponseEntity<Map<String, Object>> getUserProfile(@AuthenticationPrincipal UserDetails userDetails) {
-        // Determine role from authorities
-        String role = userDetails.getAuthorities().stream()
-            .map(auth -> auth.getAuthority())
-            .filter(auth -> auth.startsWith("ROLE_"))
-            .map(auth -> auth.substring(5))
-            .findFirst()
-            .orElse("STUDENT");
-        
-        Map<String, Object> profile = Map.of(
-            "username", userDetails.getUsername(),
-            "role", role,
-            "enabled", userDetails.isEnabled()
-        );
-        
-        return ResponseEntity.ok(profile);
+
+    private final AuthenticationService authenticationService;
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest loginRequest) {
+        LoginResponse response = authenticationService.authenticate(loginRequest);
+        return ResponseEntity.ok(ApiResponse.success(response, "Login successful"));
     }
 }

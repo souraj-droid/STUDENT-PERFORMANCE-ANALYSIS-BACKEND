@@ -3,12 +3,18 @@ package com.student.performance.config;
 import com.student.performance.model.Course;
 import com.student.performance.model.Timetable;
 import com.student.performance.model.User;
+import com.student.performance.model.Student;
+import com.student.performance.model.Performance;
 import com.student.performance.repository.CourseRepository;
 import com.student.performance.repository.TimetableRepository;
 import com.student.performance.repository.UserRepository;
+import com.student.performance.repository.StudentRepository;
+import com.student.performance.repository.PerformanceRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import java.time.LocalDate;
+import java.util.List;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -16,12 +22,16 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
     private final TimetableRepository timetableRepository;
+    private final StudentRepository studentRepository;
+    private final PerformanceRepository performanceRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public DataInitializer(UserRepository userRepository, CourseRepository courseRepository, TimetableRepository timetableRepository, PasswordEncoder passwordEncoder) {
+    public DataInitializer(UserRepository userRepository, CourseRepository courseRepository, TimetableRepository timetableRepository, StudentRepository studentRepository, PerformanceRepository performanceRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.courseRepository = courseRepository;
         this.timetableRepository = timetableRepository;
+        this.studentRepository = studentRepository;
+        this.performanceRepository = performanceRepository;
         this.passwordEncoder = passwordEncoder;
     }
     
@@ -76,29 +86,71 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("Timetable created");
         }
         
+        // Create sample performance data for students
+        if (performanceRepository.count() == 0) {
+            createSamplePerformanceData();
+            System.out.println("Sample performance data created");
+        }
+        
         System.out.println("Data initialization completed");
+    }
+    
+    private void createSamplePerformanceData() {
+        // Get students and courses
+        List<Student> students = studentRepository.findAll();
+        List<Course> courses = courseRepository.findAll();
+        
+        if (students.isEmpty() || courses.isEmpty()) {
+            return;
+        }
+        
+        String[] examTypes = {"Midterm", "Final", "Quiz", "Assignment"};
+        String[] semesters = {"Even Sem"};
+        int[] years = {2025, 2026};
+        
+        // Create performance data for each student
+        for (Student student : students) {
+            // Add 6 random course performances for each student
+            for (int i = 0; i < 6 && i < courses.size(); i++) {
+                Course course = courses.get(i);
+                
+                Performance perf = new Performance();
+                perf.setStudent(student);
+                perf.setCourse(course);
+                perf.setExamType(examTypes[(int)(Math.random() * examTypes.length)]);
+                perf.setMaxMarks(100);
+                // Random score between 40 and 95
+                perf.setObtainedMarks(40 + Math.random() * 55);
+                perf.setSemester(semesters[0]);
+                perf.setAcademicYear(years[(int)(Math.random() * years.length)]);
+                perf.setExamDate(LocalDate.now().minusDays((int)(Math.random() * 60)));
+                perf.setRemarks("Sample data for graphs");
+                
+                performanceRepository.save(perf);
+            }
+        }
     }
     
     private void createCourses() {
         String[][] courseData = {
-            {"24CS2101", "OPERATING SYSTEMS", "CSE", "L", "S-56-MA", "2025-2026", "Even Sem"},
-            {"24CS2101", "OPERATING SYSTEMS", "CSE", "P", "S-56-B", "2025-2026", "Even Sem"},
-            {"24MT2012", "MATHEMATICAL OPTIMIZATION", "CSE", "L", "S-64-MA", "2025-2026", "Even Sem"},
-            {"24MT2012", "MATHEMATICAL OPTIMIZATION", "CSE", "T", "S-64-MA", "2025-2026", "Even Sem"},
-            {"24CS2203", "DESIGN AND ANALYSIS OF ALGORITHMS", "CSE", "L", "S-75-MA", "2025-2026", "Even Sem"},
-            {"24CS2203", "DESIGN AND ANALYSIS OF ALGORITHMS", "CSE", "P", "S-75-A", "2025-2026", "Even Sem"},
-            {"24CS2203", "DESIGN AND ANALYSIS OF ALGORITHMS", "CSE", "S", "S-75-A", "2025-2026", "Even Sem"},
-            {"24SDCS02", "FULL STACK APPLICATION DEVELOPMENT", "CSE", "L", "S-61-MA", "2025-2026", "Even Sem"},
-            {"24SDCS02", "FULL STACK APPLICATION DEVELOPMENT", "CSE", "S", "S-61-B", "2025-2026", "Even Sem"},
-            {"24CS2204", "CLOUD INFRASTRUCTURE AND SERVICES", "CSE", "L", "S-70-MA", "2025-2026", "Even Sem"},
-            {"24CS2204", "CLOUD INFRASTRUCTURE AND SERVICES", "CSE", "P", "S-70-B", "2025-2026", "Even Sem"},
-            {"24CS2204", "CLOUD INFRASTRUCTURE AND SERVICES", "CSE", "S", "S-70-B", "2025-2026", "Even Sem"},
-            {"24CS2255F", "ADVANCED DATA STRUCTURES", "CSE", "L", "S-53-MA", "2025-2026", "Even Sem"},
-            {"24CS2255F", "ADVANCED DATA STRUCTURES", "CSE", "P", "S-53-B", "2025-2026", "Even Sem"},
-            {"24IN2202", "EMBEDDED SYSTEMS DESIGN", "CSE", "L", "S-51-MA", "2025-2026", "Even Sem"},
-            {"24IN2202", "EMBEDDED SYSTEMS DESIGN", "CSE", "P", "S-51-A", "2025-2026", "Even Sem"},
-            {"24SP2102", "BASKETBALL", "CSE", "S", "S-52-MA", "2025-2026", "Even Sem"},
-            {"24CC3010", "AWS CERTIFIED CLOUD PRACTITIONER", "CSE", "S", "S-57-MA", "2025-2026", "Even Sem"}
+            {"24CS2101L", "OPERATING SYSTEMS", "CSE", "L", "S-56-MA", "2025-2026", "Even Sem"},
+            {"24CS2101P", "OPERATING SYSTEMS", "CSE", "P", "S-56-B", "2025-2026", "Even Sem"},
+            {"24MT2012L", "MATHEMATICAL OPTIMIZATION", "CSE", "L", "S-64-MA", "2025-2026", "Even Sem"},
+            {"24MT2012T", "MATHEMATICAL OPTIMIZATION", "CSE", "T", "S-64-MA", "2025-2026", "Even Sem"},
+            {"24CS2203L", "DESIGN AND ANALYSIS OF ALGORITHMS", "CSE", "L", "S-75-MA", "2025-2026", "Even Sem"},
+            {"24CS2203P", "DESIGN AND ANALYSIS OF ALGORITHMS", "CSE", "P", "S-75-A", "2025-2026", "Even Sem"},
+            {"24CS2203S", "DESIGN AND ANALYSIS OF ALGORITHMS", "CSE", "S", "S-75-A", "2025-2026", "Even Sem"},
+            {"24SDCS02L", "FULL STACK APPLICATION DEVELOPMENT", "CSE", "L", "S-61-MA", "2025-2026", "Even Sem"},
+            {"24SDCS02S", "FULL STACK APPLICATION DEVELOPMENT", "CSE", "S", "S-61-B", "2025-2026", "Even Sem"},
+            {"24CS2204L", "CLOUD INFRASTRUCTURE AND SERVICES", "CSE", "L", "S-70-MA", "2025-2026", "Even Sem"},
+            {"24CS2204P", "CLOUD INFRASTRUCTURE AND SERVICES", "CSE", "P", "S-70-B", "2025-2026", "Even Sem"},
+            {"24CS2204S", "CLOUD INFRASTRUCTURE AND SERVICES", "CSE", "S", "S-70-B", "2025-2026", "Even Sem"},
+            {"24CS2255FL", "ADVANCED DATA STRUCTURES", "CSE", "L", "S-53-MA", "2025-2026", "Even Sem"},
+            {"24CS2255FP", "ADVANCED DATA STRUCTURES", "CSE", "P", "S-53-B", "2025-2026", "Even Sem"},
+            {"24IN2202L", "EMBEDDED SYSTEMS DESIGN", "CSE", "L", "S-51-MA", "2025-2026", "Even Sem"},
+            {"24IN2202P", "EMBEDDED SYSTEMS DESIGN", "CSE", "P", "S-51-A", "2025-2026", "Even Sem"},
+            {"24SP2102S", "BASKETBALL", "CSE", "S", "S-52-MA", "2025-2026", "Even Sem"},
+            {"24CC3010S", "AWS CERTIFIED CLOUD PRACTITIONER", "CSE", "S", "S-57-MA", "2025-2026", "Even Sem"}
         };
         
         for (String[] data : courseData) {
@@ -116,93 +168,23 @@ public class DataInitializer implements CommandLineRunner {
     }
     
     private void createTimetable() {
-        // Monday
-        addTimetableEntry("Mon", 3, "24MT2012", "T", "S-64", "C410", "2025-2026");
-        addTimetableEntry("Mon", 4, "24MT2012", "T", "S-64", "C410", "2025-2026");
-        addTimetableEntry("Mon", 5, "24CS2255F", "L", "S-53", "C421B1", "2025-2026");
-        addTimetableEntry("Mon", 6, "24CS2255F", "L", "S-53", "C421B1", "2025-2026");
-        addTimetableEntry("Mon", 13, "24IN2202", "L", "S-51", "C421A", "2025-2026");
-        addTimetableEntry("Mon", 14, "24IN2202", "L", "S-51", "C421A", "2025-2026");
-        addTimetableEntry("Mon", 15, "24CS2204", "L", "S-70", "C011", "2025-2026");
-        addTimetableEntry("Mon", 16, "24CS2204", "L", "S-70", "C011", "2025-2026");
-        addTimetableEntry("Mon", 17, "24CS2203", "S", "S-75", "C618", "2025-2026");
-        addTimetableEntry("Mon", 18, "24CS2203", "S", "S-75", "C618", "2025-2026");
-        addTimetableEntry("Mon", 19, "24CS2203", "S", "S-75", "C618", "2025-2026");
-        addTimetableEntry("Mon", 20, "24CS2203", "S", "S-75", "C618", "2025-2026");
+        String[] days = {"Mon", "Tue", "Wed", "Thu", "Fri"};
+        String[] courseCodes = {"24CS2101L", "24MT2012L", "24CS2203L", "24SDCS02L", "24CS2204L", "24CS2255FL", "24IN2202L", "24SP2102S", "24CC3010S"};
+        String[] sections = {"L", "P", "T", "S"};
+        String[] sectionNumbers = {"S-51", "S-52", "S-53", "S-56", "S-57", "S-61", "S-64", "S-70", "S-75"};
+        String[] roomNumbers = {"C410", "C411", "C412", "C421", "C422", "C423", "C510", "C511", "C512", "C608", "C617", "C618", "L307", "L309", "L501", "R105A", "R306A", "C011", "C219"};
         
-        // Tuesday
-        addTimetableEntry("Tue", 1, "24CC3010", "S", "S-57", "C422", "2025-2026");
-        addTimetableEntry("Tue", 2, "24CC3010", "S", "S-57", "C422", "2025-2026");
-        addTimetableEntry("Tue", 3, "24CC3010", "S", "S-57", "C422", "2025-2026");
-        addTimetableEntry("Tue", 4, "24CC3010", "S", "S-57", "C422", "2025-2026");
-        addTimetableEntry("Tue", 5, "24CS2203", "P", "S-75", "R306A", "2025-2026");
-        addTimetableEntry("Tue", 6, "24CS2203", "P", "S-75", "R306A", "2025-2026");
-        addTimetableEntry("Tue", 7, "24CS2101", "L", "S-56", "L307", "2025-2026");
-        addTimetableEntry("Tue", 8, "24CS2101", "L", "S-56", "L307", "2025-2026");
-        addTimetableEntry("Tue", 9, "24CS2101", "L", "S-56", "L307", "2025-2026");
-        addTimetableEntry("Tue", 10, "24CS2101", "L", "S-56", "L307", "2025-2026");
-        addTimetableEntry("Tue", 11, "24CS2101", "L", "S-56", "L307", "2025-2026");
-        addTimetableEntry("Tue", 12, "24CS2101", "L", "S-56", "L307", "2025-2026");
-        addTimetableEntry("Tue", 15, "24SDCS02", "S", "S-61", "C510", "2025-2026");
-        addTimetableEntry("Tue", 16, "24SDCS02", "S", "S-61", "C510", "2025-2026");
-        addTimetableEntry("Tue", 17, "24SDCS02", "S", "S-61", "C510", "2025-2026");
-        addTimetableEntry("Tue", 18, "24SDCS02", "S", "S-61", "C510", "2025-2026");
-        addTimetableEntry("Tue", 19, "24CC3010", "S", "S-57", "C511", "2025-2026");
-        addTimetableEntry("Tue", 20, "24CC3010", "S", "S-57", "C511", "2025-2026");
-        addTimetableEntry("Tue", 21, "24CC3010", "S", "S-57", "C511", "2025-2026");
-        addTimetableEntry("Tue", 22, "24CC3010", "S", "S-57", "C511", "2025-2026");
-        
-        // Wednesday
-        addTimetableEntry("Wed", 1, "24IN2202", "L", "S-51", "C221B2", "2025-2026");
-        addTimetableEntry("Wed", 2, "24IN2202", "L", "S-51", "C221B2", "2025-2026");
-        addTimetableEntry("Wed", 3, "24IN2202", "L", "S-51", "C221B2", "2025-2026");
-        addTimetableEntry("Wed", 4, "24IN2202", "L", "S-51", "C221B2", "2025-2026");
-        addTimetableEntry("Wed", 5, "24SDCS02", "S", "S-61", "L309", "2025-2026");
-        addTimetableEntry("Wed", 6, "24SDCS02", "S", "S-61", "L309", "2025-2026");
-        addTimetableEntry("Wed", 7, "24SDCS02", "S", "S-61", "L309", "2025-2026");
-        addTimetableEntry("Wed", 8, "24SDCS02", "S", "S-61", "L309", "2025-2026");
-        addTimetableEntry("Wed", 9, "24MT2012", "L", "S-64", "C421B1", "2025-2026");
-        addTimetableEntry("Wed", 10, "24MT2012", "L", "S-64", "C421B1", "2025-2026");
-        addTimetableEntry("Wed", 11, "24MT2012", "L", "S-64", "C421B1", "2025-2026");
-        addTimetableEntry("Wed", 12, "24MT2012", "L", "S-64", "C421B1", "2025-2026");
-        addTimetableEntry("Wed", 15, "24CS2203", "L", "S-75", "C608", "2025-2026");
-        addTimetableEntry("Wed", 16, "24CS2203", "L", "S-75", "C608", "2025-2026");
-        addTimetableEntry("Wed", 17, "24CS2203", "L", "S-75", "C608", "2025-2026");
-        addTimetableEntry("Wed", 18, "24CS2203", "L", "S-75", "C608", "2025-2026");
-        addTimetableEntry("Wed", 19, "24CS2204", "S", "S-70", "S603", "2025-2026");
-        addTimetableEntry("Wed", 20, "24CS2204", "S", "S-70", "S603", "2025-2026");
-        addTimetableEntry("Wed", 21, "24CS2204", "S", "S-70", "S603", "2025-2026");
-        addTimetableEntry("Wed", 22, "24CS2204", "S", "S-70", "S603", "2025-2026");
-        
-        // Thursday
-        addTimetableEntry("Thu", 3, "24CS2255F", "P", "S-53", "C617", "2025-2026");
-        addTimetableEntry("Thu", 4, "24CS2255F", "P", "S-53", "C617", "2025-2026");
-        addTimetableEntry("Thu", 5, "24CS2204", "P", "S-70", "C617", "2025-2026");
-        addTimetableEntry("Thu", 6, "24CS2204", "P", "S-70", "C617", "2025-2026");
-        addTimetableEntry("Thu", 7, "24CS2204", "P", "S-70", "C617", "2025-2026");
-        addTimetableEntry("Thu", 8, "24CS2204", "P", "S-70", "C617", "2025-2026");
-        addTimetableEntry("Thu", 11, "24CS2101", "L", "S-56", "C409", "2025-2026");
-        addTimetableEntry("Thu", 12, "24CS2101", "L", "S-56", "C409", "2025-2026");
-        
-        // Friday
-        addTimetableEntry("Fri", 1, "24IN2202", "P", "S-51", "R105A", "2025-2026");
-        addTimetableEntry("Fri", 2, "24IN2202", "P", "S-51", "R105A", "2025-2026");
-        addTimetableEntry("Fri", 3, "24IN2202", "P", "S-51", "R105A", "2025-2026");
-        addTimetableEntry("Fri", 4, "24IN2202", "P", "S-51", "R105A", "2025-2026");
-        addTimetableEntry("Fri", 5, "24CS2101", "P", "S-56", "C219", "2025-2026");
-        addTimetableEntry("Fri", 6, "24CS2101", "P", "S-56", "C219", "2025-2026");
-        addTimetableEntry("Fri", 7, "24CS2101", "P", "S-56", "C219", "2025-2026");
-        addTimetableEntry("Fri", 8, "24CS2101", "P", "S-56", "C219", "2025-2026");
-        addTimetableEntry("Fri", 9, "24CS2204", "L", "S-70", "L501", "2025-2026");
-        addTimetableEntry("Fri", 10, "24CS2204", "L", "S-70", "L501", "2025-2026");
-        addTimetableEntry("Fri", 11, "24CS2204", "L", "S-70", "L501", "2025-2026");
-        addTimetableEntry("Fri", 12, "24CS2204", "L", "S-70", "L501", "2025-2026");
-        addTimetableEntry("Fri", 15, "24CS2203", "L", "S-75", "C423", "2025-2026");
-        addTimetableEntry("Fri", 16, "24SDCS02", "L", "S-61", "C110", "2025-2026");
-        addTimetableEntry("Fri", 17, "24SP2102", "S", "S-52", "BASKETBALL COURT", "2025-2026");
-        addTimetableEntry("Fri", 18, "24SP2102", "S", "S-52", "BASKETBALL COURT", "2025-2026");
-        addTimetableEntry("Fri", 19, "24SP2102", "S", "S-52", "BASKETBALL COURT", "2025-2026");
-        addTimetableEntry("Fri", 20, "24SP2102", "S", "S-52", "BASKETBALL COURT", "2025-2026");
+        // Generate 60 random timetable entries
+        for (int i = 0; i < 60; i++) {
+            String day = days[(int)(Math.random() * days.length)];
+            int hour = 1 + (int)(Math.random() * 20); // Hours 1-20
+            String courseCode = courseCodes[(int)(Math.random() * courseCodes.length)];
+            String section = sections[(int)(Math.random() * sections.length)];
+            String sectionNumber = sectionNumbers[(int)(Math.random() * sectionNumbers.length)];
+            String roomNumber = roomNumbers[(int)(Math.random() * roomNumbers.length)];
+            
+            addTimetableEntry(day, hour, courseCode, section, sectionNumber, roomNumber, "2025-2026");
+        }
     }
     
     private void addTimetableEntry(String day, int hour, String courseCode, String section, String sectionNumber, String roomNumber, String academicYear) {

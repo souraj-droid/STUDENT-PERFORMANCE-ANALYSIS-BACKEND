@@ -1,5 +1,6 @@
 package com.student.performance.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,6 +19,7 @@ public class ReportSubject {
 
     @ManyToOne
     @JoinColumn(name = "report_id")
+    @JsonIgnore
     private Report report;
 
     private String subject;

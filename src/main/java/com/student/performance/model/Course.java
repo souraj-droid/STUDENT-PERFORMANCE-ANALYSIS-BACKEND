@@ -1,5 +1,6 @@
 package com.student.performance.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -42,6 +43,7 @@ public class Course {
     private String academicYear;
     
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Performance> performances;
     
     public int getStudentCount() {
@@ -53,7 +55,7 @@ public class Course {
             return 0.0;
         }
         return performances.stream()
-                .mapToDouble(Performance::getGrade)
+                .mapToDouble(Performance::getPercentage)
                 .average()
                 .orElse(0.0);
     }

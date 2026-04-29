@@ -1,5 +1,6 @@
 package com.student.performance.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,6 +22,7 @@ public class Report {
 
     @ManyToOne
     @JoinColumn(name = "student_id")
+    @JsonIgnore
     private Student student;
 
     private String name;
@@ -31,6 +33,7 @@ public class Report {
     private String grade;
 
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<ReportSubject> subjects;
 
     @Column(nullable = false)
